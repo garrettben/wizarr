@@ -29,9 +29,36 @@ from app.models import (
 )
 from app.services.invite_code_manager import InviteCodeManager
 from app.services.ombi_client import run_all_importers
+from app.services.sandbox import render_sandboxed
 
 wizard_bp = Blueprint("wizard", __name__, url_prefix="/wizard")
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent / "wizard_steps"
+
+# ``Settings`` is a generic key/value store that also holds credentials
+# (``admin_password``, ``ombi_api_key``, …).  Wizard steps are rendered for
+# anonymous invitees, so only these public, display-oriented keys are ever
+# handed to a step template.  This is deliberately an allowlist: any key added
+# to ``Settings`` later stays out of the wizard context unless it is listed
+# here, and nothing matching ``*_password`` / ``*_api_key`` / ``*_token`` /
+# ``*_secret`` belongs in it.
+WIZARD_SETTINGS_ALLOWLIST: frozenset[str] = frozenset(
+    {
+        # Server identity, re-derived from the active ``MediaServer`` row.
+        "server_type",
+        "server_url",
+        "external_url",
+        "server_name",
+        # Public-facing links and admin-authored display content.
+        "overseerr_url",
+        "discord_id",
+        "custom_html",
+        # Display-only capability flags and the public library list.
+        "libraries",
+        "allow_downloads",
+        "allow_live_tv",
+        "allow_downloads_audiobookshelf",
+    }
+)
 
 
 # Only allow access right after signup or when logged in
@@ -126,9 +153,9 @@ def _get_server_context(server_type: str) -> dict[str, str | None]:
 
 
 def _settings() -> dict[str, str | None]:
-    # Load all Settings rows **except** legacy server-specific keys. Those have
-    # been migrated to the dedicated ``MediaServer`` table and should no longer
-    # be sourced from the generic key/value store.
+    # Legacy server-specific keys have been migrated to the dedicated
+    # ``MediaServer`` table and are re-derived below, so they are never sourced
+    # from the generic key/value store.
     LEGACY_KEYS: set[str] = {
         "server_type",
         "server_url",
@@ -137,8 +164,12 @@ def _settings() -> dict[str, str | None]:
         "server_name",
     }
 
+    # Allowlist, not denylist: the wizard is served to anonymous invitees and
+    # every key here lands in the step render context.
     data: dict[str, str | None] = {
-        s.key: s.value for s in Settings.query.all() if s.key not in LEGACY_KEYS
+        s.key: s.value
+        for s in Settings.query.all()
+        if s.key in WIZARD_SETTINGS_ALLOWLIST and s.key not in LEGACY_KEYS
     }
 
     # ------------------------------------------------------------------
@@ -312,10 +343,13 @@ def _render(post, ctx: dict, server_type: str | None = None) -> str:
                 content_with_cards, server_type, context=render_ctx
             )
 
-        # THEN: Render Jinja templates in the processed content
-        env = current_app.jinja_env.overlay(autoescape=False)
-        template = env.from_string(content_with_widgets)
-        rendered_content = template.render(**render_ctx)
+        # THEN: Render Jinja templates in the processed content.
+        # Autoescape stays off because admin-authored markdown/HTML passing
+        # through is a product feature; the sandbox is what removes the code
+        # execution risk from DB- and import-sourced step content.
+        rendered_content = render_sandboxed(
+            content_with_widgets, autoescape=False, **render_ctx
+        )
 
         # Use simple markdown configuration - HTML should pass through by default
         return markdown.markdown(
