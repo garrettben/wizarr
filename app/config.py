@@ -2,6 +2,7 @@
 import json
 import os
 import secrets
+from datetime import timedelta
 from pathlib import Path
 from typing import ClassVar
 
@@ -53,12 +54,19 @@ def load_secrets():
 
 
 def save_secrets(secrets_dict):
-    """Save secrets to the secrets file."""
+    """Save secrets to the secrets file, owner-read/write only.
+
+    Uses os.open with an explicit mode so the file is never briefly
+    world/group readable, and chmod's it afterwards to cover the case
+    where it pre-existed with looser permissions.
+    """
     # Ensure database directory exists
     DATABASE_DIR.mkdir(exist_ok=True)
 
-    with SECRETS_FILE.open("w") as f:
+    fd = os.open(str(SECRETS_FILE), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
         json.dump(secrets_dict, f, indent=2)
+    SECRETS_FILE.chmod(0o600)
 
 
 def get_or_create_secret(key, generator_func):
@@ -80,9 +88,27 @@ class BaseConfig:
     # Flask-WTF's default hour. The admin dashboard is a long-lived HTMX page
     # and an expiring token would reject every action until a manual reload.
     WTF_CSRF_TIME_LIMIT = None
+
+    # Security response headers
+    # Report-only for now: templates (e.g. login.html) still use inline
+    # scripts/styles, so a blocking policy would break them.
+    CSP_REPORT_ONLY = (
+        "default-src 'self'; "
+        "img-src 'self' data: https:; "
+        "style-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "connect-src 'self'"
+    )
     # Sessions
     SESSION_TYPE = "cachelib"  # Changed from 'filesystem' to 'cachelib'
     SESSION_CACHELIB = SESSION_CACHELIB  # Reference the module-level cache
+    # Cookie hardening. SECURE is not set here: dev runs on plain http, so
+    # it's only forced on ProductionConfig below.
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = "Lax"
+    PERMANENT_SESSION_LIFETIME = timedelta(days=7)
 
     # Babel / i18n
     LANGUAGES: ClassVar[dict[str, str]] = {
@@ -143,3 +169,7 @@ class DevelopmentConfig(BaseConfig):
 
 class ProductionConfig(BaseConfig):
     DEBUG = False
+    # Only safe to require https-only cookies in production; local dev
+    # typically runs over plain http.
+    SESSION_COOKIE_SECURE = True
+    REMEMBER_COOKIE_SECURE = True
