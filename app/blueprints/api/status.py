@@ -69,4 +69,4 @@ def status():
 
     except Exception as e:
         logger.error("Error in status endpoint: %s", str(e))
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Internal server error"}), 500
