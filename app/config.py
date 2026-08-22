@@ -2,6 +2,7 @@
 import json
 import os
 import secrets
+from datetime import timedelta
 from pathlib import Path
 from typing import ClassVar
 
@@ -93,6 +94,13 @@ class BaseConfig:
     # Sessions
     SESSION_TYPE = "cachelib"  # Changed from 'filesystem' to 'cachelib'
     SESSION_CACHELIB = SESSION_CACHELIB  # Reference the module-level cache
+    # Cookie hardening. SECURE is not set here: dev runs on plain http, so
+    # it's only forced on ProductionConfig below.
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = "Lax"
+    PERMANENT_SESSION_LIFETIME = timedelta(days=7)
 
     # Babel / i18n
     LANGUAGES: ClassVar[dict[str, str]] = {
@@ -153,3 +161,7 @@ class DevelopmentConfig(BaseConfig):
 
 class ProductionConfig(BaseConfig):
     DEBUG = False
+    # Only safe to require https-only cookies in production; local dev
+    # typically runs over plain http.
+    SESSION_COOKIE_SECURE = True
+    REMEMBER_COOKIE_SECURE = True
