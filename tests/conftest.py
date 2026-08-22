@@ -7,7 +7,7 @@ from flask_migrate import upgrade
 
 from app import create_app
 from app.config import BaseConfig
-from app.extensions import db
+from app.extensions import db, limiter
 
 # Workaround for Python 3.13 macOS proxy detection bug
 # https://github.com/python/cpython/issues/112509
@@ -18,6 +18,8 @@ os.environ["no_proxy"] = "*"
 class TestConfig(BaseConfig):
     TESTING = True
     WTF_CSRF_ENABLED = False
+    # The suite replays endpoints far faster than a human would
+    RATELIMIT_ENABLED = False
     # Use a temporary file database for better migration compatibility
     _temp_db_path = os.path.join(tempfile.gettempdir(), "wizarr_test.db")
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{_temp_db_path}"
@@ -26,6 +28,7 @@ class TestConfig(BaseConfig):
 class E2ETestConfig(BaseConfig):
     TESTING = True
     WTF_CSRF_ENABLED = False
+    RATELIMIT_ENABLED = False
     # Use a temporary file database that both test process and live server can access
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{tempfile.gettempdir()}/wizarr_e2e_test.db"
 
@@ -143,6 +146,19 @@ def session(app):
         db.session.query(AdminAccount).delete()
         db.session.query(Settings).delete()
         db.session.commit()
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """Leave the shared Limiter switched off between tests.
+
+    Flask-Limiter keeps ``enabled`` on the extension instance rather than per
+    app, so any test that builds an app from a production-shaped config turns
+    limits on for every test that follows it. The suite replays endpoints far
+    faster than a human would, so reset the flag after each test.
+    """
+    yield
+    limiter.enabled = False
 
 
 @pytest.fixture(autouse=True)
