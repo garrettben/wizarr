@@ -112,6 +112,11 @@ class BaseConfig:
     BABEL_TRANSLATION_DIRECTORIES = str(BASE_DIR / "app" / "translations")
     # Allow forcing a specific language via environment variable
     FORCE_LANGUAGE = os.getenv("FORCE_LANGUAGE")
+    # Rate limiting (Flask-Limiter reads this at init_app time)
+    RATELIMIT_ENABLED = True
+    # Reverse proxies in front of the app whose forwarded headers we trust.
+    # 0 disables ProxyFix, so request.remote_addr stays the direct peer.
+    TRUSTED_PROXY_COUNT = int(os.getenv("TRUSTED_PROXY_COUNT", "1"))
     # Scheduler
     SCHEDULER_API_ENABLED = True
     # SQLAlchemy
