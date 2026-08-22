@@ -181,11 +181,14 @@ def render_jinja(text: str) -> Markup:
     if not text:
         return Markup("")
 
-    from flask import render_template_string
+    from app.services.sandbox import render_sandboxed
 
     try:
-        rendered = render_template_string(text)
-        return Markup(rendered)  # noqa: S704  # render_template_string auto-escapes
+        # Titles are stored in the database (and can arrive via the wizard
+        # import route), so they are rendered in a Jinja sandbox: autoescape
+        # stays on and unsafe attribute access raises instead of executing.
+        rendered = render_sandboxed(text, autoescape=True)
+        return Markup(rendered)  # noqa: S704  # Sandboxed render with autoescape on
     except Exception:
         # If rendering fails, return the original text escaped
         return Markup(escape(text))  # noqa: S704  # Text is explicitly escaped
