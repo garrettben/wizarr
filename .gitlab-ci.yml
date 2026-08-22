@@ -1,0 +1,31 @@
+# Catbird fork of wizarrrr/wizarr (GitHub garrettben/wizarr, branch `catbird`).
+# This GitLab repo is a mirror of that branch: `main` here == `catbird` there.
+# Builds harbor.catbird.net/catbird/wizarr:<short-sha> and :main with kaniko,
+# runs the shared security scans; media-k8s pins the resulting digest.
+include:
+  - project: 'catbird/infra/ci-templates'
+    ref: main
+    file: '/docker-build.yml'
+  - project: 'catbird/infra/ci-templates'
+    ref: main
+    file: '/security.yml'
+
+stages: [test, build]
+
+pytest:
+  stage: test
+  image: ghcr.io/astral-sh/uv:python3.13-alpine
+  variables:
+    UV_LINK_MODE: copy
+  script:
+    - uv sync --all-groups --frozen
+    - uv run pytest tests --ignore=tests/e2e -q -p no:cacheprovider --junitxml=junit.xml
+  artifacts:
+    when: always
+    reports:
+      junit: junit.xml
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: never
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
