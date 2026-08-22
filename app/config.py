@@ -80,6 +80,16 @@ class BaseConfig:
     # Flask-WTF's default hour. The admin dashboard is a long-lived HTMX page
     # and an expiring token would reject every action until a manual reload.
     WTF_CSRF_TIME_LIMIT = None
+    # Security response headers
+    # Report-only for now: templates (e.g. login.html) still use inline
+    # scripts/styles, so a blocking policy would break them.
+    CSP_REPORT_ONLY = (
+        "default-src 'self'; "
+        "img-src 'self' data: https:; "
+        "style-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "connect-src 'self'"
+    )
     # Sessions
     SESSION_TYPE = "cachelib"  # Changed from 'filesystem' to 'cachelib'
     SESSION_CACHELIB = SESSION_CACHELIB  # Reference the module-level cache

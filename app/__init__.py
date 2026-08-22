@@ -7,7 +7,7 @@ from .config import DevelopmentConfig
 from .error_handlers import register_error_handlers
 from .extensions import init_extensions
 from .logging_config import configure_logging
-from .middleware import require_onboarding
+from .middleware import register_security_headers, require_onboarding
 
 
 def create_app(config_object=DevelopmentConfig):
@@ -81,6 +81,7 @@ def create_app(config_object=DevelopmentConfig):
 
     register_filters(app)
     app.before_request(require_onboarding)
+    register_security_headers(app)
 
     # Step 6: Initialize wizard steps
     if show_startup:
