@@ -54,12 +54,19 @@ def load_secrets():
 
 
 def save_secrets(secrets_dict):
-    """Save secrets to the secrets file."""
+    """Save secrets to the secrets file, owner-read/write only.
+
+    Uses os.open with an explicit mode so the file is never briefly
+    world/group readable, and chmod's it afterwards to cover the case
+    where it pre-existed with looser permissions.
+    """
     # Ensure database directory exists
     DATABASE_DIR.mkdir(exist_ok=True)
 
-    with SECRETS_FILE.open("w") as f:
+    fd = os.open(str(SECRETS_FILE), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
         json.dump(secrets_dict, f, indent=2)
+    SECRETS_FILE.chmod(0o600)
 
 
 def get_or_create_secret(key, generator_func):
