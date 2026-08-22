@@ -382,6 +382,9 @@ def authenticate_complete():
         session.pop("webauthn_challenge", None)
 
         if pending_2fa_user_id:
+            # 2FA mode - record that the assertion actually verified so that
+            # auth.complete_2fa cannot log the account in on the password alone
+            session["webauthn_2fa_verified"] = db_credential.admin_account_id
             # 2FA mode - complete the authentication via the auth route
             return jsonify({"verified": True, "redirect": url_for("auth.complete_2fa")})
         # Usernameless mode - login directly
