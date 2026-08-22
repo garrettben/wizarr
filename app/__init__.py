@@ -1,6 +1,7 @@
 import os
 
 from flask import Flask
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .config import DevelopmentConfig
 from .error_handlers import register_error_handlers
@@ -31,6 +32,17 @@ def create_app(config_object=DevelopmentConfig):
         logger.step("Creating Flask application", "🌐")
     app = Flask(__name__)
     app.config.from_object(config_object)
+
+    # Trust the forwarded headers of the reverse proxies in front of us so that
+    # request.remote_addr - which the rate limiter keys on - is the real client.
+    trusted_proxies = app.config.get("TRUSTED_PROXY_COUNT", 1)
+    if trusted_proxies:
+        app.wsgi_app = ProxyFix(  # type: ignore[method-assign]
+            app.wsgi_app,
+            x_for=trusted_proxies,
+            x_proto=trusted_proxies,
+            x_host=trusted_proxies,
+        )
 
     # Step 3: Initialize extensions
     if show_startup:

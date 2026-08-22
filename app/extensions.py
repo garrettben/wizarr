@@ -23,8 +23,9 @@ migrate = Migrate()
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=[],  # No default limits
+    # In-memory storage means the counters are per worker process, so the
+    # effective limit is the configured rate multiplied by the worker count.
     storage_uri="memory://",
-    enabled=False,  # Explicitly disabled by default
 )
 
 # Initialize Flask-RESTX API with OpenAPI configuration
