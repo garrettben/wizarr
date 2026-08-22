@@ -14,7 +14,8 @@ stages: [test, build]
 
 pytest:
   stage: test
-  image: ghcr.io/astral-sh/uv:python3.13-alpine
+  # bookworm, not alpine: the dev group pins playwright, which ships no musl wheel.
+  image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
   variables:
     UV_LINK_MODE: copy
   script:

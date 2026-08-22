@@ -1,0 +1,20 @@
+# Gitleaks config for the catbird fork (picked up automatically from the repo root).
+# Keeps the default ruleset; allowlists fixture and documentation placeholders that
+# the group secret-detection job flagged (tests/*, docs/*). Real secrets never live there.
+title = "wizarr"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test fixtures and documentation examples"
+paths = [
+  '''^tests/.*''',
+  '''^docs/.*''',
+]
+regexes = [
+  '''your_api_key_here''',
+  '''test_api_key_\d+''',
+  '''abcd1234efgh5678''',
+  '''jf-EmBy-AdM1n-K3y''',
+]
