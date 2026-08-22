@@ -31,6 +31,14 @@ tests/
 .coverage
 htmlcov/
 
+# Local dev SQLite DB + secrets.json (see app/config.py DATABASE_DIR);
+# never bake these into the image.
+database/
+data/
+*.db
+*.db-wal
+*.db-shm
+
 # Documentation and helpers
 screenshots/
 docs/
