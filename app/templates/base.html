@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="stylesheet"
           href="{{ url_for('static', filename='css/main.css', v=app_version) }}" />
     <link rel="stylesheet"
@@ -72,6 +73,14 @@
             document.documentElement.classList.remove('dark');
         }
 
+        // CSRF token for hand-written fetch()/XHR callers. HTMX requests get the
+        // header from the hx-headers attribute on <body>; anything that talks to
+        // the server without HTMX must read the token from the meta tag.
+        window.csrfToken = function () {
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            return meta ? meta.getAttribute('content') : '';
+        };
+
         // Clipboard utility with fallback support for HTTP contexts
         function copyToClipboard(text, callback) {
             // Modern clipboard API (requires HTTPS or localhost)
@@ -121,7 +130,8 @@
         }
     </script>
   </head>
-  <body class="bg-gray-50 dark:bg-gray-900">
+  <body class="bg-gray-50 dark:bg-gray-900"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}'>
     {% block main %}
     {% endblock main %}
     <script src="{{ url_for('static', filename='js/vendor/alpine-collapse.min.js', v=app_version) }}"></script>

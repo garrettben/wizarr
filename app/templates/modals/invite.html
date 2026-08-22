@@ -547,6 +547,11 @@
                 htmx.ajax('POST', '/invite/table', {
                     target: '#invite_table',
                     swap: 'outerHTML',
+                    // No source element here, so the inherited hx-headers on
+                    // <body> does not apply - pass the CSRF token explicitly.
+                    headers: {
+                        'X-CSRFToken': window.csrfToken()
+                    },
                     values: {
                         server: document.getElementById('invite_server_filter')?.value || ''
                     }
