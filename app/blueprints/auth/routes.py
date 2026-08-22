@@ -125,6 +125,8 @@ def complete_2fa():
 
     user_id = session.get("pending_2fa_user_id")
     remember = session.get("pending_2fa_remember", False)
+    # Consumed unconditionally so a verified assertion can never be replayed
+    verified_user_id = session.pop("webauthn_2fa_verified", None)
 
     if not user_id:
         # Check if there are any passkeys registered for error page
@@ -134,6 +136,20 @@ def complete_2fa():
         return render_template(
             "login.html",
             error=_("No pending 2FA authentication"),
+            has_passkeys=has_passkeys,
+        )
+
+    if verified_user_id != user_id:
+        # The passkey assertion never completed (or was for a different
+        # account): the password alone must not finish the login.
+        session.pop("pending_2fa_user_id", None)
+        session.pop("pending_2fa_remember", None)
+        from app.models import WebAuthnCredential
+
+        has_passkeys = WebAuthnCredential.query.first() is not None
+        return render_template(
+            "login.html",
+            error=_("Passkey verification required"),
             has_passkeys=has_passkeys,
         )
 
@@ -150,8 +166,8 @@ def complete_2fa():
             "login.html", error=_("Authentication failed"), has_passkeys=has_passkeys
         )
 
-    # The actual WebAuthn verification will be handled by the existing WebAuthn route
-    # This route is called after successful WebAuthn authentication
+    # The WebAuthn assertion was verified by webauthn.authenticate_complete,
+    # which set the flag consumed above; only then do we log the account in.
     session.pop("pending_2fa_user_id", None)
     session.pop("pending_2fa_remember", None)
 
