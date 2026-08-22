@@ -11,6 +11,10 @@ Cards use delimiter syntax:
 # Card Title
 This is the card content with **markdown** support.
 |||
+
+Widget parameters are parsed out of wizard step content, which comes from the
+database or the wizard import route, so every template string built here is
+rendered through the Jinja sandbox in :mod:`app.services.sandbox`.
 """
 
 import logging
@@ -18,9 +22,9 @@ import re
 from typing import Any
 
 import markdown
-from flask import render_template_string
 
 from app.services.media.service import get_media_client
+from app.services.sandbox import render_sandboxed
 
 
 class WizardWidget:
@@ -34,7 +38,7 @@ class WizardWidget:
         """Render the widget with given parameters."""
         try:
             data = self.get_data(server_type, **kwargs)
-            html_content = render_template_string(self.template, **data)
+            html_content = render_sandboxed(self.template, **data)
             # Wrap in markdown HTML block to ensure it's treated as raw HTML
             return f'\n\n<div class="widget-container">\n{html_content}\n</div>\n\n'
         except Exception:
@@ -250,7 +254,7 @@ class ButtonWidget(WizardWidget):
 
                         render_ctx = context.copy()
                         render_ctx["_"] = _translate
-                        url = render_template_string(f"{{{{ {url} }}}}", **render_ctx)
+                        url = render_sandboxed(f"{{{{ {url} }}}}", **render_ctx)
                     except Exception as exc:
                         # If rendering fails, keep original value
                         logging.debug(f"Failed to render URL template '{url}': {exc}")
@@ -265,7 +269,7 @@ class ButtonWidget(WizardWidget):
 
                     # Wrap _("...") in {{ }} to make it a Jinja expression
                     template_str = f"{{{{ {text_str} }}}}"
-                    text = render_template_string(template_str, _=_translate)
+                    text = render_sandboxed(template_str, _=_translate)
                 except Exception as exc:
                     # If rendering fails, use the text as-is
                     logging.debug(
@@ -276,7 +280,7 @@ class ButtonWidget(WizardWidget):
                 try:
                     from flask_babel import gettext as _translate
 
-                    text = render_template_string(text_str, _=_translate)
+                    text = render_sandboxed(text_str, _=_translate)
                 except Exception as exc:
                     # If rendering fails, use the text as-is
                     logging.debug(f"Failed to render text template '{text_str}': {exc}")
