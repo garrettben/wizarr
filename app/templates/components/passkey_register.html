@@ -87,7 +87,8 @@
                 return fetch('/webauthn/register/complete', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': window.csrfToken()
                     },
                     body: JSON.stringify(registrationData)
                 });

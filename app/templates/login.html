@@ -53,6 +53,7 @@
                   action="{{ url_for('auth.login') }}"
                   method="post"
                   x-data="{ authMethod: '{{ selected_auth_method|default("local") }}' }">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               {% if ldap_enabled %}
                 <div>
                   <label for="auth_method"
@@ -193,7 +194,8 @@
                     const beginResponse = await fetch('/webauthn/authenticate/begin', {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': window.csrfToken()
                         },
                         body: JSON.stringify({})
                     });
@@ -227,7 +229,8 @@
                     const completeResponse = await fetch('/webauthn/authenticate/complete', {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': window.csrfToken()
                         },
                         body: JSON.stringify({
                             credential: {
@@ -253,7 +256,8 @@
                                 const completeLoginResponse = await fetch(result.redirect, {
                                     method: 'POST',
                                     headers: {
-                                        'Content-Type': 'application/json'
+                                        'Content-Type': 'application/json',
+                                        'X-CSRFToken': window.csrfToken()
                                     }
                                 });
                                 if (completeLoginResponse.ok) {

@@ -6,12 +6,12 @@ import logging
 import traceback
 from functools import wraps
 
-from flask import Blueprint, request
+from flask import Blueprint, current_app, request
 from flask_login import current_user
 from flask_restx import Resource, abort
 from sqlalchemy import func
 
-from app.extensions import api, db
+from app.extensions import api, csrf, db
 from app.models import (
     AdminAccount,
     ApiKey,
@@ -113,6 +113,13 @@ def require_api_key_or_session(f):
     def decorated_function(*args, **kwargs):
         # Check if user is authenticated via session (Flask-Login)
         if current_user.is_authenticated:
+            # The /api blueprint is CSRF exempt because it normally authenticates
+            # with the X-API-Key header, which a cross-site request cannot forge.
+            # This decorator also accepts the session cookie, which a cross-site
+            # request *can* ride on, so the CSRF check is re-applied for that
+            # path only. API-key callers are unaffected.
+            if current_app.config.get("WTF_CSRF_ENABLED", True):
+                csrf.protect()
             logger.info(
                 "API request authenticated via session from %s",
                 request.remote_addr,

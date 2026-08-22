@@ -11,6 +11,7 @@ from flask_migrate import Migrate
 from flask_restx import Api
 from flask_session import Session
 from flask_sqlalchemy import SQLAlchemy
+from flask_wtf.csrf import CSRFProtect
 
 # Instantiate extensions
 db = SQLAlchemy()
@@ -18,6 +19,7 @@ babel = Babel()
 sess = Session()
 scheduler = APScheduler()
 htmx = HTMX()
+csrf = CSRFProtect()
 login_manager = LoginManager()
 migrate = Migrate()
 limiter = Limiter(
@@ -54,6 +56,7 @@ def init_extensions(app):
     """Initialize Flask extensions with clean separation of concerns."""
     # Core extensions initialization
     sess.init_app(app)
+    _init_csrf(app)
     babel.init_app(app, locale_selector=_select_locale)
 
     # Scheduler initialization - Flask-APScheduler handles Gunicorn properly
@@ -157,6 +160,36 @@ def init_extensions(app):
             fetch_and_cache_manifest(app)
         except Exception as e:
             app.logger.info("Initial manifest fetch failed: %s", e)
+
+
+def _init_csrf(app):
+    """Enable app-wide CSRF protection and exempt the token-authenticated API.
+
+    Every cookie-authenticated route (admin, settings, wizard, media server
+    management, WebAuthn) is protected. Browser requests carry the token either
+    in the ``csrf_token`` form field or in the ``X-CSRFToken`` header that
+    ``base.html`` hands to HTMX and to the hand-written ``fetch()`` callers.
+
+    Exemptions - each one is a blueprint that authenticates with the
+    ``X-API-Key`` header instead of the session cookie, so it is not reachable
+    by a cross-site request riding on the user's cookies:
+
+    * ``api_bp`` - the Flask-RESTX ``/api`` surface behind ``@require_api_key``.
+    * ``status_bp`` - ``/api/status`` and friends, same header auth.
+
+    ``/api/users/<id>/reset-password`` also accepts a session cookie, so
+    ``require_api_key_or_session`` re-applies ``csrf.protect()`` on that path.
+
+    Nothing else is exempt: the admin, settings and media blueprints all rely
+    on the session cookie and therefore keep full CSRF enforcement.
+    """
+    csrf.init_app(app)
+
+    # Imported lazily: app.blueprints imports this module at import time.
+    from app.blueprints.api import api_bp, status_bp
+
+    csrf.exempt(api_bp)
+    csrf.exempt(status_bp)
 
 
 @login_manager.user_loader

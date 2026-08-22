@@ -2,6 +2,7 @@
 import logging
 
 from flask import render_template
+from flask_wtf.csrf import CSRFError
 
 
 def register_error_handlers(app):
@@ -19,3 +20,14 @@ def register_error_handlers(app):
     def error_401(e):
         logging.info("401: %s", e)
         return render_template("error/401.html"), 401
+
+    @app.errorhandler(CSRFError)
+    def error_csrf(e):
+        # HTMX swaps the response body straight into the page, so keep this a
+        # short plain-text message rather than a rendered page or a traceback.
+        logging.warning("CSRF failure: %s", e.description)
+        return (
+            "Security token missing or expired. Please reload the page and try again.",
+            400,
+            {"Content-Type": "text/plain; charset=utf-8"},
+        )
