@@ -1,5 +1,15 @@
 /* wizard.js */
 
+// Request headers for the JSON reorder calls below. These are plain fetch()
+// calls rather than HTMX requests, so the CSRF token has to be attached by hand
+// from the meta tag rendered in base.html.
+function jsonHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'X-CSRFToken': window.csrfToken ? window.csrfToken() : ''
+  };
+}
+
 // Helper function to show toast notifications
 function showToast(message, type = 'info') {
   // Check if there's a toast container, create if not
@@ -140,7 +150,7 @@ function attachSortableLists(root = document) {
 
           fetch(to.dataset.reorderUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: jsonHeaders(),
             body: JSON.stringify({
               server_type: serverType,
               category: category,
@@ -219,7 +229,7 @@ function attachSortableLists(root = document) {
 
           fetch(reorderUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: jsonHeaders(),
             body: JSON.stringify({ order: orderedItems })
           })
           .catch(error => {
@@ -233,7 +243,7 @@ function attachSortableLists(root = document) {
             .map(li => Number(li.dataset.id));
           fetch(to.dataset.reorderUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: jsonHeaders(),
             body: JSON.stringify(ids)
           })
           .catch(error => {

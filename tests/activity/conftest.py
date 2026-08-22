@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 from flask import Flask
 from flask_login import LoginManager, UserMixin, login_user
+from flask_wtf.csrf import CSRFProtect
 
 from app.activity.api.blueprint import activity_bp
 
@@ -19,6 +20,10 @@ def activity_app():
         SECRET_KEY="testing-secret",
         TESTING=True,
     )
+
+    # base.html renders csrf_token(); the real app gets that Jinja global from
+    # CSRFProtect, so this minimal app needs it too.
+    CSRFProtect(app)
 
     login_manager = LoginManager()
     login_manager.init_app(app)

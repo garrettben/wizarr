@@ -76,6 +76,10 @@ class BaseConfig:
     # Flask
     TEMPLATES_AUTO_RELOAD = True
     SECRET_KEY = get_or_create_secret("SECRET_KEY", generate_secret_key)
+    # CSRF: the token stays valid for the lifetime of the session instead of
+    # Flask-WTF's default hour. The admin dashboard is a long-lived HTMX page
+    # and an expiring token would reject every action until a manual reload.
+    WTF_CSRF_TIME_LIMIT = None
     # Sessions
     SESSION_TYPE = "cachelib"  # Changed from 'filesystem' to 'cachelib'
     SESSION_CACHELIB = SESSION_CACHELIB  # Reference the module-level cache
