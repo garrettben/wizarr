@@ -333,7 +333,14 @@ def manifest():
 
 
 @public_bp.route("/j/<code>/password", methods=["GET", "POST"])
+@limiter.limit("20 per minute")
 def password_prompt(code):
+    # This route provisions real accounts, so it has to run the same expiry
+    # and single-use checks as every other invitation entry point.
+    valid, message = is_invite_valid(code)
+    if not valid:
+        return render_template("invalid-invite.html", error=message)
+
     invitation = Invitation.query.filter(
         db.func.lower(Invitation.code) == code.lower()
     ).first()
