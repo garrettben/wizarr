@@ -19,6 +19,9 @@ def activity_app():
     app.config.update(
         SECRET_KEY="testing-secret",
         TESTING=True,
+        # The fork enforces CSRF app-wide; keep the csrf_token() global (CSRFProtect below)
+        # but do not reject the upstream tests' token-less POSTs.
+        WTF_CSRF_ENABLED=False,
     )
 
     # base.html renders csrf_token(); the real app gets that Jinja global from
